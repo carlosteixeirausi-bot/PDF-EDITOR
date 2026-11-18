@@ -1,0 +1,180 @@
+==========================================================
+ PDF-EDITOR - COMANDOS E OPERACAO
+ Pasta do projeto: /home/Carlos/Projetos/Editor
+==========================================================
+
+1. REQUISITOS
+----------------------------------------------------------
+- Node.js 22 ou superior
+- qpdf
+- ghostscript (gs)
+- poppler-utils (pdftoppm, pdftotext)
+- tesseract-ocr e tesseract-ocr-por
+- libreoffice (soffice)
+
+Instalar dependencias do sistema (Debian/Ubuntu):
+  sudo apt update
+  sudo apt install -y qpdf ghostscript poppler-utils tesseract-ocr tesseract-ocr-por libreoffice
+
+Instalar dependencias do projeto:
+  cd /home/Carlos/Projetos/Editor
+  npm install
+
+
+2. INICIAR O SERVIDOR
+----------------------------------------------------------
+Forma normal (terminal fica ocupado):
+  cd /home/Carlos/Projetos/Editor
+  npm start
+
+Abrir no navegador:
+  http://127.0.0.1:3000
+
+Modo desenvolvimento (reinicia ao alterar arquivos):
+  npm run dev
+
+Trocar a porta:
+  PORT=8080 npm start
+
+Expor na rede local (cuidado: outras maquinas poderao acessar):
+  HOST=0.0.0.0 npm start
+
+Iniciar em segundo plano:
+  cd /home/Carlos/Projetos/Editor
+  npm start > /tmp/editor-pdf.log 2>&1 & echo $! > /tmp/editor-pdf.pid
+
+Ver o log:
+  tail -f /tmp/editor-pdf.log
+
+
+3. PARAR O SERVIDOR
+----------------------------------------------------------
+Se estiver rodando no terminal:
+  Ctrl+C
+
+Se estiver em segundo plano com arquivo de PID:
+  kill $(cat /tmp/editor-pdf.pid)
+
+Alternativa:
+  pkill -f "node server.js"
+
+Conferir se parou:
+  curl -s http://127.0.0.1:3000/api/health || echo "servidor parado"
+
+Conferir quem esta usando a porta 3000:
+  lsof -i :3000
+  fuser -n tcp 3000
+
+
+4. REINICIAR
+----------------------------------------------------------
+  kill $(cat /tmp/editor-pdf.pid) 2>/dev/null
+  cd /home/Carlos/Projetos/Editor
+  npm start > /tmp/editor-pdf.log 2>&1 & echo $! > /tmp/editor-pdf.pid
+
+
+5. TESTES
+----------------------------------------------------------
+Teste completo de integracao (sobe um servidor temporario na porta 3123):
+  cd /home/Carlos/Projetos/Editor
+  npm test
+
+O teste verifica:
+  - upload e metadados
+  - juntar, dividir, organizar, remover e girar
+  - recorte
+  - marca d'agua e numeracao
+  - comprimir e reparar
+  - PDF para JPG e JPG para PDF
+  - PDF para Word, Excel e PowerPoint
+  - Word, Excel e PowerPoint para PDF
+  - OCR
+  - proteger e desbloquear
+  - assinatura
+  - comparacao
+  - PDF/A
+
+
+6. VERIFICAR SAUDE DO SERVIDOR
+----------------------------------------------------------
+  curl -s http://127.0.0.1:3000/api/health
+
+Exemplo de resposta:
+  {"ok":true,"commands":{"qpdf":true,"gs":true,"pdftoppm":true,
+   "pdftotext":true,"tesseract":true,"soffice":true},"version":"1.0.0"}
+
+Se algum comando estiver "false", instale a dependencia correspondente.
+
+
+7. ENDPOINTS PRINCIPAIS
+----------------------------------------------------------
+GET  /                          Pagina inicial
+GET  /ferramenta/:slug          Pagina de uma ferramenta
+GET  /api/tools                 Catalogo de ferramentas
+GET  /api/health                Status do servidor e dependencias
+POST /api/upload                Upload de arquivos
+GET  /api/file/:id              Arquivo enviado (preview/PDF.js)
+POST /api/process/:slug         Processa uma ferramenta
+GET  /api/download/:token       Baixa o resultado processado
+
+
+8. PASTAS E ARQUIVOS
+----------------------------------------------------------
+server.js                       Servidor Express e rotas
+lib/tools.js                    Catalogo e metadados das ferramentas
+lib/pdfutil.js                  Utilitarios (PDF, paginas, ZIP, cores)
+lib/processors.js               Implementacao de cada ferramenta
+public/index.html               Pagina inicial
+public/tool.html                Pagina generica de ferramenta
+public/js/app.js                Catalogo e filtros da pagina inicial
+public/js/tool.js               Interface e fluxos de cada ferramenta
+public/js/common.js             Utilitarios compartilhados da interface
+public/css/styles.css           Estilos
+public/vendor/pdfjs/            PDF.js local (sem CDN)
+data/uploads/                   Uploads temporarios
+data/tmp/                       Trabalho temporario dos processamentos
+data/output/                    Resultados prontos para download
+tests/                          Testes de integracao
+
+
+9. LIMPEZA DE ARQUIVOS TEMPORARIOS
+----------------------------------------------------------
+O servidor apaga automaticamente arquivos com mais de 12 horas.
+Para limpar manualmente (servidor parado):
+
+  cd /home/Carlos/Projetos/Editor
+  rm -rf data/uploads/* data/tmp/* data/output/*
+
+Nunca apague as pastas data/uploads, data/tmp e data/output; apenas o conteudo.
+
+
+10. PROBLEMAS COMUNS
+----------------------------------------------------------
+Porta ocupada:
+  kill $(cat /tmp/editor-pdf.pid) 2>/dev/null
+  PORT=3001 npm start
+
+"Ferramenta indisponivel" ou dependencia faltando:
+  curl -s http://127.0.0.1:3000/api/health
+  sudo apt install -y qpdf ghostscript poppler-utils tesseract-ocr tesseract-ocr-por libreoffice
+
+PDF protegido:
+  Use primeiro a ferramenta "Desbloquear PDF".
+
+PDF digitalizado sem texto:
+  Use primeiro a ferramenta "OCR PDF".
+
+OCR sem portugues:
+  sudo apt install -y tesseract-ocr-por
+
+Erro de permissao nas pastas data:
+  cd /home/Carlos/Projetos/Editor
+  mkdir -p data/uploads data/tmp data/output
+  chmod -R u+rwX data
+
+Servidor nao abre no navegador:
+  Confirme o log e a porta:
+  tail -n 30 /tmp/editor-pdf.log
+  curl -s http://127.0.0.1:3000/api/health
+
+==========================================================

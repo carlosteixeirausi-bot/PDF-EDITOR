@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ferramenta PDF — PDF-Editor</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/" aria-label="PDF-Editor">
+        <span class="brand-pdf">PDF</span><span class="brand-dash">-</span><span class="brand-editor">Editor</span>
+      </a>
+      <nav class="main-nav" aria-label="Ferramentas principais">
+        <a href="/ferramenta/juntar_pdf">Juntar PDF</a>
+        <a href="/ferramenta/dividir_pdf">Dividir PDF</a>
+        <a href="/ferramenta/comprimir_pdf">Comprimir PDF</a>
+        <div class="nav-dropdown">
+          <button type="button" class="nav-drop-btn" id="convert-toggle">Converter PDF <span class="chev">⌄</span></button>
+          <div class="dropdown-panel" id="convert-menu"></div>
+        </div>
+        <div class="nav-dropdown">
+          <button type="button" class="nav-drop-btn" id="all-toggle">Todas as ferramentas PDF <span class="chev">⌄</span></button>
+          <div class="dropdown-panel wide" id="all-menu"></div>
+        </div>
+      </nav>
+      <div class="header-actions">
+        <span class="offline-pill">100% local</span>
+        <a class="header-cta" href="/">Início</a>
+      </div>
+      <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu">☰</button>
+    </div>
+  </header>
+
+  <main class="tool-main">
+    <a href="/" class="back-link">← Todas as ferramentas</a>
+    <div id="tool-root">
+      <div class="loading-block"><span class="spinner"></span> Carregando ferramenta…</div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="process-overlay" id="process-overlay" hidden>
+    <div class="process-card">
+      <div class="process-spinner"><span class="spinner big"></span></div>
+      <h2 id="process-title">Processando…</h2>
+      <p id="process-detail">Isso pode levar alguns segundos. O arquivo está sendo processado no seu computador.</p>
+      <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="brand small"><span class="brand-pdf">PDF</span><span class="brand-dash">-</span><span class="brand-editor">Editor</span></div>
+      <p>PDF-Editor · Ferramentas PDF que rodam na sua máquina.</p>
+    </div>
+  </footer>
+
+  <script type="module" src="/js/tool.js"></script>
+</body>
+</html>
