@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { TOOLS, TOOL_MAP, CATEGORIES } from './lib/tools.js';
 import { PROCESSORS } from './lib/processors.js';
-import { friendlyError, pdfPageCount, run } from './lib/pdfutil.js';
+import { commandExists, friendlyError, pdfPageCount, run } from './lib/pdfutil.js';
 import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -93,12 +93,7 @@ app.get('/api/health', async (_req, res) => {
   const commands = ['qpdf', 'gs', 'pdftoppm', 'pdftotext', 'pdfunite', 'tesseract', 'soffice'];
   const checks = {};
   await Promise.all(commands.map(async (command) => {
-    try {
-      await run('which', [command]);
-      checks[command] = true;
-    } catch {
-      checks[command] = false;
-    }
+    checks[command] = await commandExists(command);
   }));
   res.json({ ok: true, commands: checks, version: '1.0.0' });
 });
@@ -329,11 +324,7 @@ app.listen(PORT, HOST, async () => {
   const required = ['qpdf', 'gs', 'pdftoppm', 'pdftotext', 'tesseract', 'soffice'];
   const missing = [];
   await Promise.all(required.map(async (command) => {
-    try {
-      await run('which', [command]);
-    } catch {
-      missing.push(command);
-    }
+    if (!(await commandExists(command))) missing.push(command);
   }));
   if (missing.length) {
     console.log(`  Aviso: dependências ausentes: ${missing.join(', ')}`);

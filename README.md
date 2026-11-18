@@ -58,6 +58,55 @@ Por padrão, o projeto fica em `~/PDF-EDITOR`. Para escolher outro destino:
 
 Se o systemd não estiver disponível, o instalador inicia o servidor em segundo plano e grava o log em `pdf-editor.log`.
 
+## Instalação no Windows Server
+
+Validado em Windows Server 2025 (x64). Execute em um PowerShell **como Administrador**.
+
+```powershell
+Invoke-WebRequest https://raw.githubusercontent.com/carlosteixeirausi-bot/PDF-EDITOR/main/instalar.ps1 -OutFile instalar.ps1
+powershell -ExecutionPolicy Bypass -File .\instalar.ps1
+```
+
+Ou, em uma linha:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/carlosteixeirausi-bot/PDF-EDITOR/main/instalar.ps1 | iex"
+```
+
+O instalador do Windows:
+
+1. Instala o Chocolatey, se necessário.
+2. Instala Node.js LTS, Ghostscript, QPDF, Poppler, Tesseract, LibreOffice, Git e NSSM.
+3. Baixa ou atualiza o projeto em `C:\PDF-EDITOR`.
+4. Instala o idioma português no Tesseract.
+5. Roda `npm install`.
+6. Cria `config.env` com `HOST=0.0.0.0` e `PORT=3000`.
+7. Cria o serviço do Windows `pdf-editor` com NSSM, em inicialização automática.
+8. Libera a porta 3000 no Firewall do Windows.
+9. Inicia o serviço e exibe os endereços de acesso.
+
+Opções:
+
+```powershell
+# Outra pasta
+powershell -ExecutionPolicy Bypass -File .\instalar.ps1 -InstallDir 'D:\PDF-EDITOR'
+
+# Outra porta
+powershell -ExecutionPolicy Bypass -File .\instalar.ps1 -Port 8080
+```
+
+Gerenciar o serviço:
+
+```powershell
+Get-Service pdf-editor
+Restart-Service pdf-editor
+Stop-Service pdf-editor
+Start-Service pdf-editor
+Get-Content C:\PDF-EDITOR\pdf-editor.log -Tail 50 -Wait
+```
+
+Requisitos: acesso de Administrador, internet durante a instalação e cerca de 1 GB livre. Os scripts `.sh` não são usados no Windows.
+
 ## Acessar da rede local
 
 A instalação já deixa tudo pronto. Em outro computador, celular ou tablet na mesma rede, abra:
@@ -225,7 +274,8 @@ PDF-EDITOR/
 ├── lib/               catálogo, processadores e utilidades PDF
 ├── public/            interface, estilos, scripts e PDF.js local
 ├── tests/             testes de integração
-├── instalar.sh        instala, configura o serviço e inicia na rede local
+├── instalar.sh        instalação Linux com systemd
+├── instalar.ps1       instalação Windows Server com serviço NSSM
 ├── iniciar.sh         inicia manualmente em primeiro plano
 ├── iniciar-rede.sh    inicia manualmente com acesso pela rede
 ├── config.env.example modelo de configuração de host e porta
@@ -236,11 +286,19 @@ PDF-EDITOR/
 
 ## Problemas comuns
 
-**O serviço não iniciou**
+**O serviço não iniciou no Linux**
 
 ```bash
 sudo systemctl status pdf-editor
 sudo journalctl -u pdf-editor -n 80 --no-pager
+```
+
+**O serviço não iniciou no Windows**
+
+```powershell
+Get-Service pdf-editor
+Get-Content C:\PDF-EDITOR\pdf-editor.log -Tail 80
+Get-Content $env:TEMP\pdf-editor-install.log -Tail 80
 ```
 
 **Porta 3000 ocupada**
