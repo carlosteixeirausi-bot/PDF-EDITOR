@@ -20,6 +20,24 @@ function Refresh-Path {
   $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
 }
 
+function Stop-PdfService([string]$Name) {
+  $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
+  if (-not $service -or $service.Status -eq 'Stopped') { return }
+  & sc.exe stop $Name | Out-Null
+  $deadline = (Get-Date).AddSeconds(15)
+  while ((Get-Service -Name $Name -ErrorAction SilentlyContinue).Status -ne 'Stopped' -and (Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 1
+  }
+  $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
+  if ($service -and $service.Status -ne 'Stopped') {
+    $cim = Get-CimInstance Win32_Service -Filter "Name='$Name'" -ErrorAction SilentlyContinue
+    if ($cim -and $cim.ProcessId -gt 0) {
+      Stop-Process -Id $cim.ProcessId -Force -ErrorAction SilentlyContinue
+      Start-Sleep -Seconds 2
+    }
+  }
+}
+
 function Add-MachinePath([string]$Directory) {
   if (-not (Test-Path $Directory)) { return }
   $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
@@ -141,7 +159,7 @@ try {
   $nssm = (Get-Command nssm.exe).Source
   $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
   if ($existing) {
-    if ($existing.Status -ne 'Stopped') { Stop-Service -Name $ServiceName -Force }
+    Stop-PdfService $ServiceName
     & $nssm set $ServiceName Application $nodeExe
     & $nssm set $ServiceName AppParameters 'server.js'
   } else {
@@ -157,6 +175,7 @@ try {
   & $nssm set $ServiceName AppRotateFiles 1
   & $nssm set $ServiceName AppRotateOnline 1
   & $nssm set $ServiceName AppRotateBytes 10485760
+  & $nssm set $ServiceName AppStopMethodSkip 7
   & $nssm set $ServiceName DisplayName 'PDF-Editor'
   & $nssm set $ServiceName Description 'Ferramentas PDF locais acessiveis pela rede'
 
