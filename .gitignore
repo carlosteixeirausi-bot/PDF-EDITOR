@@ -3,6 +3,7 @@ data/
 .env
 .env.*
 *.log
+*.pid
 .DS_Store
 Thumbs.db
 config.env
