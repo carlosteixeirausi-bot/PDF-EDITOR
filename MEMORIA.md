@@ -9,6 +9,7 @@ Guia de contexto do projeto para continuidade por pessoas ou agentes.
 - Pasta: `/home/Carlos/Projetos/Editor`
 - Tipo: aplicação web local (não é SaaS, não envia arquivos para a internet)
 - Idioma da interface e documentação: português do Brasil
+- Plataformas: Linux (systemd) e Windows Server (serviço NSSM)
 - Endereço padrão: `http://127.0.0.1:3000`
 
 Objetivo: oferecer um conjunto completo de ferramentas PDF que roda inteiramente no computador do usuário, com interface no navegador e processamento no servidor Node.js local.
@@ -22,6 +23,13 @@ npm start
 ```
 
 Abrir `http://127.0.0.1:3000`.
+
+### Instalação automatizada
+
+- **Linux:** `sudo ./instalar.sh` instala dependências, configura systemd, `HOST=0.0.0.0`, libera o firewall e deixa o serviço rodando.
+- **Windows Server:** execute `instalar.ps1` em PowerShell **como Administrador**. Ele instala as dependências via Chocolatey, cria o serviço NSSM, libera a porta 3000 e inicia o PDF-Editor.
+
+Ambos os instaladores permitem acesso pela rede local e início automático com o sistema. Detalhes e opções: [README.md](./README.md).
 
 Comandos completos de operação: [COMANDOS.txt](./COMANDOS.txt).
 Explicação técnica e diagramas: [COMO-FUNCIONA.md](./COMO-FUNCIONA.md).
@@ -72,6 +80,11 @@ Editor/
 ├── COMANDOS.txt           guia operacional
 ├── COMO-FUNCIONA.md       guia técnico com diagramas Mermaid
 ├── MEMORIA.md             este arquivo
+├── instalar.sh            instalação Linux com systemd
+├── instalar.ps1           instalação Windows Server com serviço NSSM
+├── iniciar.sh             inicia manualmente em primeiro plano
+├── iniciar-rede.sh        inicia manualmente com acesso pela rede
+├── config.env.example     modelo de configuração de HOST e PORT
 ├── lib/
 │   ├── tools.js           catálogo das 24 ferramentas
 │   ├── processors.js      implementação das operações
@@ -97,7 +110,7 @@ Editor/
 
 ## 5. Dependências
 
-### Sistema (Debian/Ubuntu)
+### Sistema (Linux — Debian/Ubuntu)
 
 ```bash
 sudo apt update
@@ -112,6 +125,23 @@ sudo apt install -y qpdf ghostscript poppler-utils \
 | `pdftoppm` / `pdftotext` (Poppler) | renderização de páginas e extração de texto |
 | `tesseract` + `tesseract-ocr-por` | OCR em PDFs digitalizados |
 | `libreoffice` / `soffice` | conversão Office para PDF |
+
+### Sistema (Windows Server)
+
+Instalado pelo `instalar.ps1` via Chocolatey:
+
+| Pacote | Uso |
+|---|---|
+| `nodejs-lts` | execução do servidor |
+| `ghostscript` | compressão, reparo, PDF/A (comando `gswin64c`) |
+| `qpdf` | proteger/desbloquear PDF, operações estruturais |
+| `poppler` | `pdftoppm` / `pdftotext` |
+| `tesseract` + tessdata `por` | OCR em português |
+| `libreoffice-fresh` | conversão Office para PDF |
+| `git` | clonar/atualizar o projeto |
+| `nssm` | registrar o serviço `pdf-editor` com início automático |
+
+O código trata o nome diferente do Ghostscript no Windows; ver seção 8.
 
 ### Node.js
 
@@ -183,6 +213,15 @@ O corpo de processamento usa IDs de arquivo e um objeto de opções específico 
 - JPG para PDF: `pdf-lib`/`sharp`.
 - OCR: rasterização + Tesseract com idioma português.
 
+### Compatibilidade Windows
+
+- `lib/pdfutil.js`: `commandName()` mapeia `gs` para `gswin64c`; `commandExists()` usa `where` no Windows e `which` no Linux.
+- `server.js`: health e mensagens de inicialização usam `commandExists()`; não chamar `which` diretamente.
+- `lib/processors.js`: o `-env:UserInstallation` do `soffice` é convertido com `pathToFileURL`, gerando um caminho `file:///...` válido no Windows.
+- `instalar.ps1`: instala Chocolatey e dependências, copia o tessdata `por`, clona/atualiza em `C:\PDF-EDITOR`, cria `config.env`, registra o serviço NSSM `pdf-editor` (automático), libera a porta 3000 no firewall (Domain/Private) e inicia.
+- Reinstalação: `Stop-PdfService` encerra o PID remanescente após 15 segundos; o NSSM usa `AppStopMethodSkip 7` para evitar o serviço travar em `StopPending`.
+- Validado em Windows Server 2025: `/api/health` com `gs`, `qpdf`, `pdftoppm`, `pdftotext`, `tesseract` e `soffice` em `true`.
+
 ### Segurança e ciclo de vida
 
 - Bind padrão em `127.0.0.1`; `HOST=0.0.0.0` expõe na rede local.
@@ -200,7 +239,8 @@ npm test
 - `tests/run.mjs` sobe um servidor temporário na porta 3123.
 - `tests/fixtures.mjs` gera PDFs e imagens sintéticas em `/tmp/editor-pdf-fixtures`.
 - `tests/smoke.mjs` valida catálogo, upload, processamento e download.
-- Estado atual: 30 verificações passando.
+- Estado atual: 30 verificações passando no Linux.
+- No Windows Server 2025 foi feita validação funcional adicional: 12/12 verificações (merge, split, compressão, PDF→JPG, OCR em português, Word→PDF via LibreOffice, proteger/desbloquear e PDF/A), além do health com todas as dependências `true`.
 
 Sempre executar `npm test` após alterar `server.js`, `lib/` ou os fluxos de upload/processamento.
 
@@ -223,6 +263,7 @@ Sempre executar `npm test` após alterar `server.js`, `lib/` ou os fluxos de upl
 - Sem banco de dados; tokens e metadados vivem na memória do processo.
 - Reiniciar o servidor invalida tokens de download pendentes.
 - A retenção de 12 horas pode ser ajustada no código, mas não há interface para isso.
+- No Windows Server, a instalação exige PowerShell como Administrador e internet para o Chocolatey; o serviço é gerenciado pelo NSSM.
 
 ## 12. Diagnóstico rápido
 
@@ -240,6 +281,23 @@ tail -f /tmp/editor-server.log
 kill $(cat /tmp/editor-server.pid)
 ```
 
+No Windows Server (PowerShell como Administrador):
+
+```powershell
+# Serviço ativo?
+Get-Service pdf-editor
+
+# Health e dependências
+Invoke-WebRequest http://127.0.0.1:3000/api/health -UseBasicParsing
+
+# Logs
+Get-Content C:\PDF-EDITOR\pdf-editor.log -Tail 80
+Get-Content $env:TEMP\pdf-editor-install.log -Tail 80
+
+# Reiniciar
+Restart-Service pdf-editor
+```
+
 Problemas comuns:
 
 - **PDF.js quebrado no navegador:** confirmar `pdfjs-dist@4.10.38`.
@@ -253,3 +311,5 @@ Problemas comuns:
 
 - Interface e fluxo próprios, com identidade visual PDF-Editor.
 - Recorte e assinatura foram implementados como interações visuais, não por coordenadas.
+- Instaladores automatizados para Linux (systemd) e Windows Server (NSSM), com acesso pela rede e início automático.
+- Compatibilidade Windows validada em Windows Server 2025, incluindo Ghostscript, QPDF, Poppler, Tesseract e LibreOffice.
